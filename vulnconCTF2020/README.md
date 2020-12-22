@@ -47,14 +47,57 @@ So its length is 42 so we submit and its the flag
 vulncon{0xE209470e1289D4CE5F23aa7e486228c46C4D99a4}
 ```
 
-## Web Exploitation 10: Elemental
+## Reverse Engineering 100: HashMe
+
 **Challenge**  
-Just put in the password for the flag! [Link](http://yrmyzscnvh.abctf.xyz/web1/)
+I hash I xor what else can I do?
+
+![alt text](https://github.com/H4MA-A/Writeups/blob/main/vulnconCTF2020/7.png)
 
 **Solution**  
-Web page with a password field, password was in source as a comment, entering it in field gave the flag
+For this challenge, we are provided with a binary, and after analyzing we fin that it’s a 32bit ELF
+
+![alt text](https://github.com/H4MA-A/Writeups/blob/main/vulnconCTF2020/8.png)
+
+And once we open IDA we find a lot of conditions so I understood that I have to generate a correct flag
+
+So at first, I tried to understand the condition and use a z3 script to generate a correct flag but I found out that IDA didn’t get the conditions right so I used the disassembly to be more accurate
+
+But the script didn’t seem to work so all that hard work was for nothing so it came up for us to use angr 
+
+```python
+import angr
+import claripy
+import sys
+
+
+b = "HashMe.bin"
+project = angr.Project(b)
+length = 13
+characters = [claripy.BVS('flag{-%d' %i, 8) for i in range(length)]
+input_ = claripy.Concat(*characters + [claripy.BVV(b'\n')])
+
+state = project.factory.full_init_state(args=["b"], stdin=input_)    
+simulate = project.factory.simulation_manager(state) 
+good_addr = 0x15fc
+bad_addr = 0x1610
+simulate.explore(find=good_addr, avoid=bad_addr)  
+s = []
+for j in simulate.deadended:
+    if b"Here you go awaaaaay" in j.posix.dumps(1):
+        s.append(j)
+valid = s[0].posix.dumps(0)
+print(valid)
+```
+I calculated the addresses of the instructions using IDA hex view
+
+![alt text](https://github.com/H4MA-A/Writeups/blob/main/vulnconCTF2020/9.png)
+
+Note: the script didn’t work on WSL so I tried it in a Ubuntu VM and it worked fine
+
+![alt text](https://github.com/H4MA-A/Writeups/blob/main/vulnconCTF2020/10.png)
 
 **Flag**  
 ```
-ABCTF{insp3ct3d_dat_3l3m3nt}
+vulncon{r3ver5eM4s7er}
 ```
